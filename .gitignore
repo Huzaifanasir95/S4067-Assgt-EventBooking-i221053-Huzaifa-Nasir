@@ -1,7 +1,11 @@
 # Ignore .env files in UserService and EventService
 /UserService/.env
 /EventService/.env
+/NotificationService/.env
+/BookingService/.env
 *.env
 # Ignore node_modules folders
 /UserService/node_modules/
 /EventService/node_modules/
+/NotificationService/node_modules/
+/BookingService/node_modules/
