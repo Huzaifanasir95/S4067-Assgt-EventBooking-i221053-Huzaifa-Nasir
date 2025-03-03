@@ -89,6 +89,21 @@ app.get('/users/:userId', async (req, res) => {
 });
 
 // Start the server
+
 app.listen(5000, () => {
   console.log('UserService is running on port 5000');
+
+// app.listen(5000, () => {
+//     console.log('UserService is running on port 5000');
+// });
+
+
+app.get('/', (req, res) => {
+    res.send('Welcome to the Event Booking API!');
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+
 });
