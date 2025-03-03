@@ -5,18 +5,16 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const axios = require('axios');
 const amqp = require('amqplib');
-// comments
+
+// Load environment variables
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+// MongoDB connection (remove deprecated options as per MFLP-10)
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.log('Error connecting to MongoDB:', err));
 
@@ -39,22 +37,25 @@ connectRabbitMQ();
 
 // Create Booking
 app.post('/bookings', async (req, res) => {
-  const { userId, eventId, tickets, cardInfo } = req.body;
+  const { userId, eventId, tickets, cardInfo, userEmail } = req.body; // Include userEmail from MFLP-10
 
   try {
-    // Check event availability
+    // Check event availability with timeout from MFLP-10
     let availableTickets;
     try {
-      const availabilityResponse = await axios.get(`http://localhost:5001/events/${eventId}/availability`);
+      const availabilityResponse = await axios.get(`http://localhost:5001/events/${eventId}/availability`, {
+        timeout: 5000,
+      });
       availableTickets = availabilityResponse.data.availableTickets;
     } catch (availabilityError) {
       if (availabilityError.response && availabilityError.response.status === 404) {
         return res.status(400).json({ message: 'Event not found. Please add the event first.' });
       }
-      throw availabilityError; // Re-throw other errors
+      console.error('Availability check error:', availabilityError.message);
+      throw availabilityError;
     }
 
-    if (availableTickets < tickets) {
+    if (availableTickets < tickets || availableTickets - tickets < 0) { // Use MFLP-10 validation
       return res.status(400).json({ message: 'Not enough tickets available' });
     }
 
@@ -68,27 +69,35 @@ app.post('/bookings', async (req, res) => {
     const booking = new Booking({ userId, eventId, tickets, status: 'CONFIRMED', paymentStatus: 'PAID' });
     await booking.save();
 
-    // Update event availability
+    // Update event availability with timeout and logging from MFLP-10
     try {
-      await axios.patch(`http://localhost:5001/events/${eventId}/availability`, {
-        availableTickets: availableTickets - tickets,
+      const newTickets = availableTickets - tickets;
+      const updateResponse = await axios.patch(`http://localhost:5001/events/${eventId}/availability`, {
+        availableTickets: newTickets,
+      }, {
+        timeout: 5000,
       });
+      console.log('Event availability updated:', updateResponse.data);
     } catch (updateError) {
       console.warn('Failed to update event availability:', updateError.message);
-      // Continue with booking even if update fails (non-critical)
+      // Continue with booking, but log the failure
     }
 
-    // Publish notification to RabbitMQ
+    // Publish notification to RabbitMQ with error handling from MFLP-10
     if (channel) {
       const queue = 'booking_notifications';
       const message = JSON.stringify({
         bookingId: booking._id,
-        userEmail: 'user@example.com', // Replace with real user email
+        userEmail: userEmail || 'user@example.com', // Use userEmail if provided
         status: 'CONFIRMED',
         notificationType: 'EMAIL',
       });
-      channel.sendToQueue(queue, Buffer.from(message), { persistent: true });
-      console.log('Sent notification to RabbitMQ for booking:', booking._id);
+      try {
+        channel.sendToQueue(queue, Buffer.from(message), { persistent: true });
+        console.log('Sent notification to RabbitMQ for booking:', booking._id);
+      } catch (rabbitError) {
+        console.error('Failed to send notification to RabbitMQ:', rabbitError.message);
+      }
     }
 
     res.status(201).json({
