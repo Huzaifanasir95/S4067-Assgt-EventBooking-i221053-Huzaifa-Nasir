@@ -4,7 +4,9 @@ const dotenv = require('dotenv');
 const bodyParser = require('body-parser');
 const cors = require('cors');
 
-dotenv.config();
+// Load environment variables with explicit path
+dotenv.config({ path: __dirname + '/.env' });
+// comments (retained for documentation)
 
 const app = express();
 app.use(cors());

@@ -6,13 +6,14 @@ const cors = require('cors');
 const axios = require('axios');
 const amqp = require('amqplib');
 
+// Load environment variables
 dotenv.config();
 
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-// MongoDB connection
+// MongoDB connection (remove deprecated options as per MFLP-10)
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch((err) => console.log('Error connecting to MongoDB:', err));
@@ -36,10 +37,10 @@ connectRabbitMQ();
 
 // Create Booking
 app.post('/bookings', async (req, res) => {
-  const { userId, eventId, tickets, cardInfo, userEmail } = req.body;
+  const { userId, eventId, tickets, cardInfo, userEmail } = req.body; // Include userEmail from MFLP-10
 
   try {
-    // Check event availability
+    // Check event availability with timeout from MFLP-10
     let availableTickets;
     try {
       const availabilityResponse = await axios.get(`http://localhost:5001/events/${eventId}/availability`, {
@@ -54,7 +55,7 @@ app.post('/bookings', async (req, res) => {
       throw availabilityError;
     }
 
-    if (availableTickets < tickets || availableTickets - tickets < 0) {
+    if (availableTickets < tickets || availableTickets - tickets < 0) { // Use MFLP-10 validation
       return res.status(400).json({ message: 'Not enough tickets available' });
     }
 
@@ -68,7 +69,7 @@ app.post('/bookings', async (req, res) => {
     const booking = new Booking({ userId, eventId, tickets, status: 'CONFIRMED', paymentStatus: 'PAID' });
     await booking.save();
 
-    // Update event availability
+    // Update event availability with timeout and logging from MFLP-10
     try {
       const newTickets = availableTickets - tickets;
       const updateResponse = await axios.patch(`http://localhost:5001/events/${eventId}/availability`, {
@@ -82,12 +83,12 @@ app.post('/bookings', async (req, res) => {
       // Continue with booking, but log the failure
     }
 
-    // Publish notification to RabbitMQ
+    // Publish notification to RabbitMQ with error handling from MFLP-10
     if (channel) {
       const queue = 'booking_notifications';
       const message = JSON.stringify({
         bookingId: booking._id,
-        userEmail: userEmail || 'user@example.com',
+        userEmail: userEmail || 'user@example.com', // Use userEmail if provided
         status: 'CONFIRMED',
         notificationType: 'EMAIL',
       });
