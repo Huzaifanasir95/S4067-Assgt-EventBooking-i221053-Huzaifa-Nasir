@@ -11,14 +11,16 @@ const Login = () => {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    console.log('Login attempt:', { email, password }); // Debug log
     try {
       const response = await axios.post('http://localhost:5000/login', { email, password });
       setMessage(response.data.message);
-
-      const eventsResponse = await axios.get('http://localhost:5001/events');
-      const events = JSON.stringify(eventsResponse.data);
-      window.location.href = `http://localhost:3000/events?events=${encodeURIComponent(events)}`;
+      const { events, userId, userEmail } = response.data;
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('userEmail', userEmail);
+      navigate('/events', { state: { events } });
     } catch (error) {
+      console.error('Login error:', error.response?.data || error);
       setMessage(error.response?.data?.message || 'An error occurred');
     }
   };
@@ -29,13 +31,15 @@ const Login = () => {
         type="email"
         placeholder="Email"
         value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        onChange={(e) => { console.log('Email changed:', e.target.value); setEmail(e.target.value); }}
+        required
       />
       <Input
         type="password"
         placeholder="Password"
         value={password}
-        onChange={(e) => setPassword(e.target.value)}
+        onChange={(e) => { console.log('Password changed:', e.target.value); setPassword(e.target.value); }}
+        required
       />
       <Button type="submit">Login</Button>
       {message && <Message>{message}</Message>}
