@@ -5,7 +5,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 
 dotenv.config({ path: __dirname + '/.env' });
-
+// comments
 const app = express();
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:5000'],
