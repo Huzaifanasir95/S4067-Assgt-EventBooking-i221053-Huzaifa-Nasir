@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  user-service:
+    build:
+      context: ./UserService
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGODB_URI=mongodb+srv://nasirhuzaifa95:1234@cluster0.uir19.mongodb.net/BookingPlatform?retryWrites=true&w=majority&appName=Cluster0
+      - PORT=5000
+    volumes:
+      - /app/node_modules
+    networks:
+      - event-booking-network
+
+  event-service:
+    build:
+      context: ./EventService
+      dockerfile: Dockerfile
+    ports:
+      - "5001:5001"
+    environment:
+      - MONGODB_URI=mongodb+srv://nasirhuzaifa95:1234@cluster0.uir19.mongodb.net/BookingPlatform?retryWrites=true&w=majority&appName=Cluster0
+      - PORT=5001
+    volumes:
+      - /app/node_modules
+    networks:
+      - event-booking-network
+
+  booking-service:
+    build:
+      context: ./BookingService
+      dockerfile: Dockerfile
+    ports:
+      - "5002:5002"
+    environment:
+      - MONGODB_URI=mongodb+srv://nasirhuzaifa95:1234@cluster0.uir19.mongodb.net/BookingPlatform?retryWrites=true&w=majority&appName=Cluster0
+      - PORT=5002
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - EVENT_SERVICE_URL=http://event-service:5001
+    volumes:
+      - /app/node_modules
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure  # Restart if it fails to connect to RabbitMQ initially
+    networks:
+      - event-booking-network
+
+  notification-service:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    ports:
+      - "5003:5003"
+    environment:
+      - MONGODB_URI=mongodb+srv://nasirhuzaifa95:1234@cluster0.uir19.mongodb.net/BookingPlatform?retryWrites=true&w=majority&appName=Cluster0
+      - PORT=5003
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+    volumes:
+      - /app/node_modules
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure  # Restart if it fails to connect to RabbitMQ initially
+    networks:
+      - event-booking-network
+
+  frontend-service:
+    build:
+      context: ./UserService/user-service-client
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_OPTIONS=--no-deprecation
+      - REACT_APP_API_BASE_URL=http://localhost:5000
+      - REACT_APP_EVENT_SERVICE_URL=http://localhost:5001
+      - REACT_APP_BOOKING_SERVICE_URL=http://localhost:5002
+    volumes:
+      - /app/node_modules
+    networks:
+      - event-booking-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5673:5672" # AMQP port (host port 5673 maps to container port 5672)
+      - "15673:15672" # Management UI port (host port 15673 maps to container port 15672)
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s  # Give RabbitMQ enough time to start
+    networks:
+      - event-booking-network
+
+networks:
+  event-booking-network:
+    driver: bridge
