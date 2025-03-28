@@ -98,11 +98,8 @@ cd S4067-Assgt-EventBooking-i221053-Huzaifa-Nasir
    ```bash
    git checkout kubernetes
    ```
-2. Start your Kubernetes cluster (e.g., with Minikube):
-   ```bash
-   minikube start
-   ```
-3. Apply the Kubernetes manifests:
+
+2. Apply the Kubernetes manifests:
    ```bash
    kubectl apply -f kubernetes/namespace.yaml
    kubectl apply -f kubernetes/configmap.yaml
@@ -110,8 +107,8 @@ cd S4067-Assgt-EventBooking-i221053-Huzaifa-Nasir
    kubectl apply -f kubernetes/deployment-service-*.yaml
    kubectl apply -f kubernetes/ingress.yaml
    ```
-4. Ensure Traefik is running as the Ingress Controller in your cluster.
-5. Access the application via the Ingress URL eventbooking.local
+3. Ensure Traefik is running as the Ingress Controller in your cluster.
+4. Access the application via the Ingress URL eventbooking.local
 
 ## Screenshots
 Screenshots of the working application in both Docker Compose and Kubernetes environments are included in the report (not in this repository). They demonstrate:
