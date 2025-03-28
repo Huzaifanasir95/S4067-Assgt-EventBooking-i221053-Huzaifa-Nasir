@@ -1,7 +1,7 @@
 {
-  "name": "userservice",
+  "name": "bookingservice",
   "version": "1.0.0",
-  "description": "This is UserService",
+  "description": "This is BookingService",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,11 +11,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "amqplib": "^0.10.5",
     "axios": "^1.8.1",
-    "body-parser": "^1.20.0",
+    "body-parser": "^1.20.3",
+    "bookingservice": "file:",
     "cors": "^2.8.5",
     "express": "^4.21.2",
-    "mongoose": "^8.11.0",
-    "userservice": "file:"
+    "mongoose": "^8.11.0"
   }
 }

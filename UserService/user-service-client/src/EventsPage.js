@@ -1,203 +1,262 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import './EventsPage.css';
 
-const EventsPage = () => {
-  const [events, setEvents] = useState([]);
-  const [showAddEvent, setShowAddEvent] = useState(false);
-  const [newEvent, setNewEvent] = useState({ title: '', description: '', date: '', availableTickets: '', location: '' });
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://eventbooking.local/api/users';
+const EVENT_SERVICE_URL = process.env.REACT_APP_EVENT_SERVICE_URL || 'http://eventbooking.local/api/events';
+const BOOKING_SERVICE_URL = process.env.REACT_APP_BOOKING_SERVICE_URL || 'http://eventbooking.local/api/bookings';
+
+const EventsPage = ({ events, setEvents }) => {
   const [message, setMessage] = useState('');
   const [showBookings, setShowBookings] = useState(false);
   const [bookings, setBookings] = useState([]);
-  const [userNames, setUserNames] = useState({}); // Cache user names
-  const [eventTitles, setEventTitles] = useState({}); // Cache event titles
-  const location = useLocation();
+  const [userNames, setUserNames] = useState({});
+  const [eventTitles, setEventTitles] = useState({});
+  const [showAddEventForm, setShowAddEventForm] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: '',
+    description: '',
+    date: '',
+    availableTickets: '',
+    location: '',
+    createdBy: localStorage.getItem('userId') || 'Unknown',
+  });
   const navigate = useNavigate();
-  const userId = localStorage.getItem('userId') || 'user123';
-
-  useEffect(() => {
-    const { state } = location;
-    console.log('Location state:', state);
-    const fetchEventsAndUsers = async () => {
-      try {
-        const response = await axios.get('http://localhost:5001/events');
-        console.log('Fetched events:', response.data);
-        setEvents(response.data);
-        // Pre-fetch event titles
-        const titles = {};
-        response.data.forEach(event => titles[event._id] = event.title);
-        setEventTitles(titles);
-        // Pre-fetch user names for createdBy
-        const userIds = [...new Set(response.data.map(event => event.createdBy))];
-        const names = { ...userNames };
-        for (const uid of userIds) {
-          if (!names[uid]) {
-            try {
-              const userResponse = await axios.get(`http://localhost:5000/users/${uid}`);
-              names[uid] = userResponse.data.name;
-            } catch (userError) {
-              console.error(`Error fetching user ${uid}:`, userError);
-              names[uid] = 'Unknown'; // Fallback for failed fetches
-            }
-          }
-        }
-        setUserNames(names);
-      } catch (error) {
-        console.error('Error fetching events:', error);
-        setMessage(`Error fetching events: ${error.message}`);
-      }
-    };
-    fetchEventsAndUsers();
-  }, [location]);
-
-  const handleAddEvent = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await axios.post('http://localhost:5001/events', {
-        title: newEvent.title,
-        description: newEvent.description,
-        date: newEvent.date,
-        availableTickets: parseInt(newEvent.availableTickets, 10),
-        location: newEvent.location,
-        createdBy: userId,
-      });
-      setMessage(response.data.message);
-      setEvents([...events, { _id: response.data.eventId, ...newEvent, date: new Date(newEvent.date), availableTickets: parseInt(newEvent.availableTickets, 10), createdBy: userId }]);
-      setNewEvent({ title: '', description: '', date: '', availableTickets: '', location: '' });
-      setShowAddEvent(false);
-      setEventTitles({ ...eventTitles, [response.data.eventId]: newEvent.title });
-      // Update userNames if needed
-      if (!userNames[userId]) {
-        const userResponse = await axios.get(`http://localhost:5000/users/${userId}`);
-        setUserNames({ ...userNames, [userId]: userResponse.data.name });
-      }
-    } catch (error) {
-      console.error('Error adding event:', error.response?.data || error.message);
-      setMessage(`Error adding event: ${error.response?.data?.message || error.message}`);
-    }
-  };
+  const userId = localStorage.getItem('userId');
 
   const fetchBookings = async () => {
     try {
-      const response = await axios.get(`http://localhost:5002/bookings/user/${userId}`);
+      const response = await axios.get(`${BOOKING_SERVICE_URL}/user/${userId}`);
       setBookings(response.data);
       setShowBookings(true);
-      // Pre-fetch user names and event titles for bookings
-      const userIds = [...new Set([userId, ...response.data.map(booking => booking.userId)])]; // Include logged-in userId
+
+      const userIds = [...new Set([userId, ...response.data.map(booking => booking.userId)])];
       const eventIds = [...new Set(response.data.map(booking => booking.eventId))];
       const names = { ...userNames };
       const titles = { ...eventTitles };
       for (const uid of userIds) {
         if (!names[uid]) {
-          try {
-            const userResponse = await axios.get(`http://localhost:5000/users/${uid}`);
-            names[uid] = userResponse.data.name || 'Unknown';
-          } catch (userError) {
-            console.error(`Error fetching user ${uid}:`, userError);
-            names[uid] = 'Unknown';
-          }
+          const userResponse = await axios.get(`${API_BASE_URL}/${uid}`);
+          names[uid] = userResponse.data.name || 'Unknown';
         }
       }
       for (const eid of eventIds) {
         if (!titles[eid]) {
-          try {
-            const eventResponse = await axios.get(`http://localhost:5001/events/${eid}`);
-            titles[eid] = eventResponse.data.title || 'Unknown Event';
-          } catch (eventError) {
-            console.error(`Error fetching event ${eid}:`, eventError);
-            titles[eid] = 'Unknown Event';
-          }
+          const eventResponse = await axios.get(`${EVENT_SERVICE_URL}/${eid}`);
+          titles[eid] = eventResponse.data.title || 'Unknown Event';
         }
       }
       setUserNames(names);
       setEventTitles(titles);
     } catch (error) {
-      console.error('Error fetching bookings:', error);
-      setMessage(`Error fetching bookings: ${error.message}`);
+      setMessage('Error fetching bookings');
     }
+  };
+
+  const handleBackToEvents = () => {
+    setShowBookings(false);
+    setShowAddEventForm(false);
+    setMessage('');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewEvent((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleAddEventSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(`${EVENT_SERVICE_URL}`, {
+        title: newEvent.title,
+        description: newEvent.description,
+        date: newEvent.date,
+        availableTickets: parseInt(newEvent.availableTickets, 10),
+        location: newEvent.location,
+        createdBy: newEvent.createdBy,
+      });
+      setMessage(response.data.message);
+      const updatedEvents = await axios.get(`${EVENT_SERVICE_URL}`);
+      setEvents(updatedEvents.data);
+      setNewEvent({
+        title: '',
+        description: '',
+        date: '',
+        availableTickets: '',
+        location: '',
+        createdBy: userId || 'Unknown',
+      });
+      setShowAddEventForm(false);
+    } catch (error) {
+      setMessage(`Error creating event: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
+  const handleAddEvent = () => {
+    setShowAddEventForm(true);
+    setShowBookings(false);
+    setMessage('');
+  };
+
+  const handleBookNow = (eventId) => {
+    if (!userId) {
+      setMessage('Please log in to book an event.');
+      navigate('/');
+      return;
+    }
+    console.log(`Attempting to navigate to /book/${eventId}`);
+    navigate(`/book/${eventId}`, { replace: false });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userId');
+    localStorage.removeItem('userEmail');
+    navigate('/');
   };
 
   return (
     <div className="app-container">
       <header className="header">
-        <h1>Event Booking Platform</h1>
-        <button onClick={() => setShowAddEvent(true)} style={{ padding: '10px', backgroundColor: '#4CAF50', color: 'white', marginRight: '10px' }}>Add Event</button>
-        <button onClick={fetchBookings} style={{ padding: '10px', backgroundColor: '#3498db', color: 'white' }}>Show My Bookings</button>
+        <h1 className="header-title">Event Booking Platform</h1>
+        <div className="header-buttons">
+          <button className="add-event-btn" onClick={handleAddEvent}>
+            Add Event
+          </button>
+          <button className="show-bookings-btn" onClick={fetchBookings}>
+            Show My Bookings
+          </button>
+          <button className="logout-btn" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
       </header>
       <main className="events-container">
-        <h2>Event Listings</h2>
-        {showAddEvent && (
-          <form onSubmit={handleAddEvent} style={{ marginBottom: '20px', padding: '10px', background: '#f8f9fa' }}>
-            <input
-              type="text"
-              placeholder="Title"
-              value={newEvent.title}
-              onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Description"
-              value={newEvent.description}
-              onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-            />
-            <input
-              type="date"
-              value={newEvent.date}
-              onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-              required
-            />
-            <input
-              type="number"
-              placeholder="Available Tickets"
-              value={newEvent.availableTickets}
-              onChange={(e) => setNewEvent({ ...newEvent, availableTickets: e.target.value })}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Location"
-              value={newEvent.location}
-              onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-            />
-            <button type="submit" style={{ padding: '10px', backgroundColor: '#4CAF50', color: 'white' }}>Add Event</button>
-            <button type="button" onClick={() => setShowAddEvent(false)} style={{ padding: '10px', marginLeft: '10px' }}>Cancel</button>
-          </form>
-        )}
-        {message && <p>{message}</p>}
-        {showBookings && (
-          <div className="bookings-section" style={{ marginTop: '20px', padding: '10px', background: '#f8f9fa' }}>
-            <h3>My Bookings</h3>
-            {bookings.length > 0 ? (
-              <ul>
-                {bookings.map((booking) => (
-                  <li key={booking._id}>
-                    Booking ID: {booking._id}, Event: {eventTitles[booking.eventId] || 'Loading...'}, Tickets: {booking.tickets}, 
-                    Status: {booking.status}, Payment Status: {booking.paymentStatus}, 
-                    Created by: {userNames[booking.userId] || 'Loading...'}, Created: {new Date(booking.createdAt).toLocaleString()}
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p>No bookings found.</p>
-            )}
-            <button onClick={() => setShowBookings(false)} style={{ padding: '10px', marginTop: '10px' }}>Close</button>
-          </div>
-        )}
-        {events.length > 0 ? (
-          <div className="events-grid">
-            {events.map((event) => (
-              <div key={event._id} className="event-card">
-                <h3>{event.title} (Created by: {userNames[event.createdBy] || 'Loading...'})</h3>
-                <p className="event-date">Date: {new Date(event.date).toLocaleDateString()}</p>
-                <p className="event-tickets">Available Tickets: {event.availableTickets}</p>
-                <button className="book-button" onClick={() => navigate(`/book/${event._id}`)}>Book Now</button>
+        {message && <p className="message">{message}</p>}
+        {showAddEventForm ? (
+          <div className="add-event-section">
+            <h2 className="section-title">Add New Event</h2>
+            <form className="add-event-form" onSubmit={handleAddEventSubmit}>
+              <div className="form-group">
+                <label htmlFor="title">Title:</label>
+                <input
+                  type="text"
+                  id="title"
+                  name="title"
+                  value={newEvent.title}
+                  onChange={handleInputChange}
+                  required
+                />
               </div>
-            ))}
+              <div className="form-group">
+                <label htmlFor="description">Description:</label>
+                <textarea
+                  id="description"
+                  name="description"
+                  value={newEvent.description}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="date">Date:</label>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  value={newEvent.date}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="availableTickets">Available Tickets:</label>
+                <input
+                  type="number"
+                  id="availableTickets"
+                  name="availableTickets"
+                  value={newEvent.availableTickets}
+                  onChange={handleInputChange}
+                  min="1"
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="location">Location:</label>
+                <input
+                  type="text"
+                  id="location"
+                  name="location"
+                  value={newEvent.location}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="form-buttons">
+                <button type="submit" className="submit-event-btn">
+                  Create Event
+                </button>
+                <button
+                  type="button"
+                  className="cancel-btn"
+                  onClick={handleBackToEvents}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        ) : showBookings ? (
+          <div className="bookings-section">
+            <h2 className="section-title">My Bookings</h2>
+            <ul className="bookings-list">
+              {bookings.map((booking) => (
+                <li key={booking._id} className="booking-item">
+                  <span className="booking-event">
+                    Event: {eventTitles[booking.eventId] || 'Loading...'}
+                  </span>
+                  <span className="booking-tickets">
+                    Tickets: {booking.tickets}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <button className="back-to-events-btn" onClick={handleBackToEvents}>
+              Back to Events
+            </button>
           </div>
         ) : (
-          <p className="no-events">No events available.</p>
+          <div className="events-listing">
+            <h2 className="section-title">Event Listings</h2>
+            <div className="events-grid">
+              {events.map((event) => (
+                <div key={event._id} className="event-card">
+                  <div className="event-card-content">
+                    <h3 className="event-title">{event.title}</h3>
+                    <p className="event-created">
+                      Created by: {event.createdBy || 'Unknown'}
+                    </p>
+                    <p className="event-date">
+                      Date: {new Date(event.date).toLocaleDateString()}
+                    </p>
+                    <p className="event-tickets">
+                      Available Tickets: {event.availableTickets}
+                    </p>
+                    <p className="event-location">
+                      Location: {event.location || 'TBD'}
+                    </p>
+                    <p className="event-description">
+                      {event.description || 'No description available.'}
+                    </p>
+                    <button
+                      className="book-now-btn"
+                      onClick={() => handleBookNow(event._id)}
+                    >
+                      Book Now
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </main>
     </div>

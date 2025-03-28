@@ -3,23 +3,27 @@ import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import styled from 'styled-components';
 
+const EVENT_SERVICE_URL = process.env.REACT_APP_EVENT_SERVICE_URL || 'http://eventbooking.local/api/events';
+const BOOKING_SERVICE_URL = process.env.REACT_APP_BOOKING_SERVICE_URL || 'http://eventbooking.local/api/bookings';
+
 const BookingPage = () => {
   const [tickets, setTickets] = useState(1);
   const [message, setMessage] = useState('');
   const [cardInfo, setCardInfo] = useState({ cardNumber: '', expiry: '', cvv: '' });
+  const [eventTitle, setEventTitle] = useState('');
   const navigate = useNavigate();
   const { eventId } = useParams();
-  const userId = localStorage.getItem('userId') || 'user123';
-  const userEmail = localStorage.getItem('userEmail') || 'user@example.com';
+  const userId = localStorage.getItem('userId');
+  const userEmail = localStorage.getItem('userEmail');
 
   useEffect(() => {
     const fetchEventTitle = async () => {
       try {
-        const response = await axios.get(`http://localhost:5001/events/${eventId}`);
-        localStorage.setItem(`eventTitle_${eventId}`, response.data.title || 'Unknown Event');
+        const response = await axios.get(`${EVENT_SERVICE_URL}/${eventId}`);
+        setEventTitle(response.data.title || 'Unknown Event');
       } catch (error) {
         console.error('Error fetching event title:', error);
-        localStorage.setItem(`eventTitle_${eventId}`, 'Unknown Event');
+        setEventTitle('Unknown Event');
       }
     };
     fetchEventTitle();
@@ -28,11 +32,10 @@ const BookingPage = () => {
   const handleBook = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:5002/bookings', { userId, eventId, tickets, cardInfo, userEmail });
+      const response = await axios.post(`${BOOKING_SERVICE_URL}`, { userId, eventId, tickets, cardInfo, userEmail });
       setMessage(response.data.message);
       if (response.data.details) {
-        const eventTitle = localStorage.getItem(`eventTitle_${eventId}`) || 'Unknown';
-        setMessage(`Booking successful! Details: Event ${eventTitle}, Tickets: ${response.data.details.tickets}, Status: ${response.data.details.status}`);
+        setMessage(`Booking successful! Event: ${eventTitle}, Tickets: ${response.data.details.tickets}, Status: ${response.data.details.status}`);
       }
       setTimeout(() => navigate('/events'), 3000);
     } catch (error) {
@@ -46,6 +49,7 @@ const BookingPage = () => {
       <h1>Book Event</h1>
       <div className="booking-info">
         <p>Booking for Event ID: {eventId}</p>
+        <p>{eventTitle}</p>
       </div>
       <Form onSubmit={handleBook}>
         <Label>
@@ -95,7 +99,7 @@ const BookingPage = () => {
   );
 };
 
-// Styled components
+// Styled components remain unchanged
 const FormContainer = styled.div`
   display: flex;
   flex-direction: column;

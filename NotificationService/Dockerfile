@@ -1,20 +1,17 @@
-# Use a minimal Node.js image
+# Use a minimal Node.js base image
 FROM node:18-alpine
 
 # Set working directory
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install production dependencies
-RUN npm install --production
-
-# Copy the rest of the application code
+# Copy the entire NotificationService folder (excluding node_modules due to .dockerignore)
 COPY . .
 
-# Expose port (specified as 5003)
+# Install dependencies
+RUN npm install
+
+# Expose the port NotificationService runs on
 EXPOSE 5003
 
-# Start the application
+# Start the service
 CMD ["node", "index.js"]
