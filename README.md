@@ -96,7 +96,7 @@ cd S4067-Assgt-EventBooking-i221053-Huzaifa-Nasir
 ### Running with Kubernetes
 1. Switch to the `kubernetes` branch:
    ```bash
-   git checkout kubernetes
+   git checkout kubernetes-services
    ```
 
 2. Apply the Kubernetes manifests:
