@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: onlineeventbookinghuzaifanasir
+data:
+  user-service-url: "http://user-service:5000"
+  event-service-url: "http://event-service:5001"
+  booking-service-url: "http://booking-service:5002"
+  notification-service-url: "http://notification-service:5003"

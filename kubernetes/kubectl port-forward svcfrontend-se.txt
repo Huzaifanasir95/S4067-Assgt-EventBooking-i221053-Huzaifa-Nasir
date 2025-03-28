@@ -1,0 +1,6 @@
+kubectl port-forward svc/user-service 5000:5000 -n onlineeventbookinghuzaifanasir
+kubectl port-forward svc/event-service 5001:5001 -n onlineeventbookinghuzaifanasir
+kubectl port-forward svc/booking-service 5002:5002 -n onlineeventbookinghuzaifanasir
+kubectl port-forward svc/notification-service 5003:5003 -n onlineeventbookinghuzaifanasir
+kubectl port-forward svc/rabbitmq 5673:5672 -n onlineeventbookinghuzaifanasir
+kubectl port-forward svc/frontend-service 8080:80 -n onlineeventbookinghuzaifanasir
