@@ -1,19 +1,27 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
+
+// Use an environment variable for the API base URL
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const Register = () => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
+  const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    console.log('Register attempt:', { name, email, password }); // Debug log
+    console.log('Register attempt:', { name, email, password });
     try {
-      const response = await axios.post('http://localhost:5000/register', { name, email, password });
+      const response = await axios.post(`${API_BASE_URL}/register`, { name, email, password });
       setMessage(response.data.message);
+      setTimeout(() => {
+        navigate('/'); // Redirect to login page after successful registration
+      }, 2000);
     } catch (error) {
       console.error('Register error:', error.response?.data || error);
       setMessage(error.response?.data?.message || 'An error occurred');
@@ -22,25 +30,26 @@ const Register = () => {
 
   return (
     <Form onSubmit={handleRegister}>
+      <FormTitle>Register</FormTitle>
       <Input
         type="text"
         placeholder="Name"
         value={name}
-        onChange={(e) => { console.log('Name changed:', e.target.value); setName(e.target.value); }}
+        onChange={(e) => setName(e.target.value)}
         required
       />
       <Input
         type="email"
         placeholder="Email"
         value={email}
-        onChange={(e) => { console.log('Email changed:', e.target.value); setEmail(e.target.value); }}
+        onChange={(e) => setEmail(e.target.value)}
         required
       />
       <Input
         type="password"
         placeholder="Password"
         value={password}
-        onChange={(e) => { console.log('Password changed:', e.target.value); setPassword(e.target.value); }}
+        onChange={(e) => setPassword(e.target.value)}
         required
       />
       <Button type="submit">Register</Button>
@@ -50,7 +59,7 @@ const Register = () => {
 };
 
 const Form = styled.form`
-  background: #fff;
+  background-color: #34495e;
   padding: 30px;
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   border-radius: 10px;
@@ -62,12 +71,23 @@ const Form = styled.form`
   transition: transform 0.3s ease-in-out;
 `;
 
+const FormTitle = styled.h2`
+  font-size: 1.8rem;
+  font-weight: 600;
+  color: #ffffff;
+  text-align: center;
+  margin-bottom: 10px;
+`;
+
 const Input = styled.input`
   padding: 12px;
   font-size: 1rem;
   border: 1px solid #ccc;
   border-radius: 5px;
+  background-color: #2c3e50;
+  color: #ffffff;
   outline: none;
+
   &:focus {
     border-color: #4CAF50;
   }
@@ -82,6 +102,7 @@ const Button = styled.button`
   cursor: pointer;
   border-radius: 5px;
   transition: background-color 0.3s ease;
+
   &:hover {
     background-color: #45a049;
   }

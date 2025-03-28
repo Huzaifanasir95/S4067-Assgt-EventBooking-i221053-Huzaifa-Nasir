@@ -7,15 +7,12 @@
 
 # Ignore node_modules folders
 /UserService/node_modules/
+/UserService/user-service-client/node_modules/
+/UserService/user-service-client/public/
 /EventService/node_modules/
 /NotificationService/node_modules/
 /BookingService/node_modules/
 
-# Ignore docker files
-docker
-docker-compose.yaml
-docker-compose.yml
-*.dockerignore
+
 
 # Ignore Kubernetes folder
-/Kubernetes/

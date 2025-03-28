@@ -1,35 +1,17 @@
-# Build stage
-FROM node:18-alpine AS build
-
-# Set working directory
-WORKDIR /app
-
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies (including devDependencies for build)
-RUN npm install
-
-# Copy the rest of the frontend code
-COPY . .
-
-# Build the frontend app (assumes React or similar with a build script)
-RUN npm run build
-
-# Production stage
+# Use a minimal Node.js base image
 FROM node:18-alpine
 
-# Install serve to host the static files
-RUN npm install -g serve
-
 # Set working directory
 WORKDIR /app
 
-# Copy built files from the build stage
-COPY --from=build /app/build ./build
+# Copy the entire user-service-client folder (excluding node_modules due to .dockerignore)
+COPY . .
 
-# Expose port (specified as 3000)
+# Install dependencies
+RUN npm install
+
+# Expose the port FrontendService runs on
 EXPOSE 3000
 
-# Start the app
-CMD ["serve", "-s", "build", "-l", "3000"]
+# Start the React application
+CMD ["npm", "start"]
